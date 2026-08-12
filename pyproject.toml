@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "file-organizer"
+version = "1.0.0"
+description = "安全的命令行文件整理工具：先预览、后执行、可撤销"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "deng98732" }]
+keywords = ["file-organizer", "files", "organize", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.scripts]
+organize = "organize:main"
+
+[tool.setuptools]
+py-modules = ["organize"]
