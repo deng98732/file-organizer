@@ -22,6 +22,9 @@ CATEGORY_MAP = {
 # 本脚本自身的文件名（整理时跳过自己）
 SELF_NAME = Path(__file__).name
 
+# 整理历史日志文件名（记录每次移动，用于 --undo）
+HISTORY_NAME = ".organize_history.json"
+
 
 def category_for(filename: str) -> str:
     """根据文件名返回类别文件夹名，未匹配则归入 Others。"""
@@ -30,6 +33,61 @@ def category_for(filename: str) -> str:
         if ext in exts:
             return category
     return "Others"
+
+
+def plan_moves(target: Path) -> list[tuple[Path, Path]]:
+    """
+    扫描 target 目录，规划所有移动操作。
+
+    规则：
+    - 只处理直接子文件（不递归子文件夹、不移动文件夹）
+    - 跳过隐藏文件（以 . 开头）
+    - 跳过本脚本自身和整理历史日志
+    - 目标重名时自动加序号（photo.png -> photo_1.png）
+
+    返回 [(源路径, 目标路径), ...] 列表。
+    """
+    moves: list[tuple[Path, Path]] = []
+    planned_destinations: set[Path] = set()  # 本次规划中已占用的目标名
+
+    for item in sorted(target.iterdir()):
+        if not item.is_file():
+            continue  # 跳过子文件夹
+        if item.name.startswith("."):
+            continue  # 跳过隐藏文件
+        if item.name in (SELF_NAME, HISTORY_NAME):
+            continue  # 跳过脚本自身和历史日志
+
+        category = category_for(item.name)
+        dest = target / category / item.name
+
+        # 重名处理：目标已存在（磁盘上或本次规划中）则加序号
+        counter = 1
+        while dest.exists() or dest in planned_destinations:
+            dest = target / category / f"{item.stem}_{counter}{item.suffix}"
+            counter += 1
+
+        planned_destinations.add(dest)
+        moves.append((item, dest))
+
+    return moves
+
+
+def print_plan(moves: list[tuple[Path, Path]]) -> None:
+    """以清晰表格打印移动计划。"""
+    if not moves:
+        print("没有需要整理的文件，目录已经很整洁了。")
+        return
+
+    print(f"以下 {len(moves)} 个文件将被移动：")
+    for src, dest in moves:
+        print(f"  {src.name:<30} -> {dest.parent.name}/{dest.name}")
+
+    # 按类别汇总
+    from collections import Counter
+    counts = Counter(dest.parent.name for _, dest in moves)
+    summary = ", ".join(f"{name}({n})" for name, n in sorted(counts.items()))
+    print(f"\n共 {len(moves)} 个文件：{summary}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -60,6 +118,13 @@ def main() -> int:
 
     print(f"目标目录：{target.resolve()}")
     print(f"模式：{'执行整理' if args.apply else '预览（不会移动任何文件）'}")
+    print()
+
+    moves = plan_moves(target)
+    print_plan(moves)
+
+    if not args.apply and moves:
+        print(f"\n确认无误后，运行：python organize.py {target} --apply")
     return 0
 
 
