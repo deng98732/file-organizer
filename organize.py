@@ -2,7 +2,10 @@
 """文件整理助手：按类型归类文件夹中的散乱文件。"""
 
 import argparse
+import json
+import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -90,6 +93,50 @@ def print_plan(moves: list[tuple[Path, Path]]) -> None:
     print(f"\n共 {len(moves)} 个文件：{summary}")
 
 
+def load_history(target: Path) -> list[dict]:
+    """读取目标目录的整理历史（不存在或损坏时返回空列表）。"""
+    history_path = target / HISTORY_NAME
+    if not history_path.exists():
+        return []
+    try:
+        return json.loads(history_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_history(target: Path, history: list[dict]) -> None:
+    """将整理历史写入目标目录。"""
+    (target / HISTORY_NAME).write_text(
+        json.dumps(history, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def execute_moves(target: Path, moves: list[tuple[Path, Path]]) -> int:
+    """
+    执行移动并记录历史。每成功移动一个文件就落盘一次，崩溃也能恢复。
+    返回成功移动的文件数。
+    """
+    history = load_history(target)
+    operation = {
+        "id": datetime.now().isoformat(timespec="seconds"),
+        "target": str(target.resolve()),
+        "moves": [],
+    }
+    history.append(operation)
+
+    for src, dest in moves:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.move(str(src), str(dest))
+        except OSError as e:
+            print(f"  移动失败：{src.name} -> {dest.parent.name}/ ({e})", file=sys.stderr)
+            continue
+        operation["moves"].append({"src": str(src), "dest": str(dest)})
+        save_history(target, history)  # 每移动一个就落盘，防止中途崩溃丢失记录
+
+    return len(operation["moves"])
+
+
 def parse_args() -> argparse.Namespace:
     """解析命令行参数。"""
     parser = argparse.ArgumentParser(
@@ -123,8 +170,17 @@ def main() -> int:
     moves = plan_moves(target)
     print_plan(moves)
 
-    if not args.apply and moves:
-        print(f"\n确认无误后，运行：python organize.py {target} --apply")
+    if not args.apply:
+        if moves:
+            print(f"\n确认无误后，运行：python organize.py {target} --apply")
+        return 0
+
+    if not moves:
+        return 0
+
+    moved = execute_moves(target, moves)
+    print(f"\n已移动 {moved}/{len(moves)} 个文件。")
+    print(f"历史记录：{target / HISTORY_NAME}（可用 --undo 撤销）")
     return 0
 
 
