@@ -31,6 +31,15 @@ python3 organize.py ~/Downloads --apply
 # 撤销最近一次整理
 python3 organize.py ~/Downloads --undo
 
+# 按修改日期归档（YYYY/MM 文件夹）
+python3 organize.py ~/Downloads --by-date --apply
+
+# 自定义分类规则（与默认规则合并）
+python3 organize.py ~/Downloads --config rules.json --apply
+
+# 清理空文件夹
+python3 organize.py ~/Downloads --clean-empty --apply
+
 # 查看帮助
 python3 organize.py --help
 ```
@@ -68,6 +77,17 @@ $ python3 organize.py ~/Downloads --apply
 | Code | py, js, ts, java, c, cpp, h, go, rs, html, css, sh, sql |
 | Others | 以上未匹配的任何文件 |
 
+## 自定义分类规则（v2）
+
+`--config rules.json` 可与默认规则合并：新增类别、或给已有类别追加扩展名。
+
+```json
+{
+  "Design": [".sketch", ".fig", ".xd"],
+  "Images": [".tiff", ".psd"]
+}
+```
+
 ## 运行测试
 
 ```bash
@@ -79,15 +99,17 @@ python3 test_organize.py
 ```text
 file-organizer/
 ├── organize.py        # 主程序
-├── test_organize.py   # 自动化测试（8 个场景）
+├── test_organize.py   # 自动化测试（15 个场景）
 └── requirements.md    # 需求文档（v1 冻结）
 ```
 
 ## 路线图
 
-- [ ] v2：自定义分类规则（JSON 配置文件）
-- [ ] v2：按日期归类（`2026/08/` 文件夹）
-- [ ] v2：清理空文件夹选项
+- [x] v2：自定义分类规则（JSON 配置文件）
+- [x] v2：按日期归档（`YYYY/MM` 文件夹）
+- [x] v2：清理空文件夹选项
+- [ ] v3：文件夹监听（自动整理）
+- [ ] v3：图形界面
 
 ## 许可证
 

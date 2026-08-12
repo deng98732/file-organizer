@@ -1,7 +1,7 @@
 # 文件整理助手 organize.py — 需求文档
 
-> 状态：**已确认**（v1 冻结）
-> 技术栈：Python 3，仅用标准库（argparse / pathlib / shutil / json）
+> 状态：**已确认**（v1 冻结；v2 已实现，见文末「v2 变更记录」）
+> 技术栈：Python 3（>=3.10），仅用标准库（argparse / pathlib / shutil / json）
 
 ## 一句话描述
 
@@ -68,3 +68,11 @@ python organize.py --help            # 帮助
   d) undo 完整还原
   e) 重复运行幂等
   f) 不存在的目录 → 友好报错退出
+
+## v2 变更记录（已实现）
+
+1. **自定义分类规则** `--config rules.json`：JSON 文件与默认规则合并，可新增类别或扩展已有类别
+2. **按日期归档** `--by-date`：按文件修改时间归档到 `YYYY/MM/` 文件夹
+3. **清理空文件夹** `--clean-empty`：预览/执行空目录清理（含级联清理空父目录）
+
+配套：自动化测试扩展至 15 个场景（`test_organize.py`）。

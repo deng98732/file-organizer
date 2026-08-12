@@ -4,6 +4,8 @@
 运行方式：python3 test_organize.py
 """
 
+import json
+import os
 import shutil
 import subprocess
 import sys
@@ -146,6 +148,80 @@ class TestOrganize(unittest.TestCase):
         result = run(str(empty), "--apply")
         self.assertEqual(result.returncode, 0)
         self.assertIn("没有需要整理", result.stdout)
+
+    # ================= v2 功能 =================
+
+    # ---- v2: 自定义分类规则（与默认合并） ----
+    def test_custom_rules(self):
+        config = Path(self.tmp) / "rules.json"
+        config.write_text(json.dumps({
+            "Design": [".sketch", ".fig"],       # 新类别
+            "Images": [".webp", ".tiff"],        # 扩展已有类别
+        }), encoding="utf-8")
+        (self.messy / "logo.sketch").touch()
+        (self.messy / "photo.tiff").touch()
+
+        result = run(str(self.messy), "--config", str(config), "--apply")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("已移动 18/18", result.stdout)
+        self.assertTrue((self.messy / "Design" / "logo.sketch").exists())
+        self.assertTrue((self.messy / "Images" / "photo.tiff").exists())
+
+    def test_custom_rules_without_config_uses_defaults(self):
+        """不传 --config 时，新扩展名应落入 Others。"""
+        (self.messy / "logo.sketch").touch()
+        result = run(str(self.messy), "--apply")
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue((self.messy / "Others" / "logo.sketch").exists())
+
+    def test_invalid_config_errors(self):
+        bad = Path(self.tmp) / "bad.json"
+        bad.write_text("not json{", encoding="utf-8")
+        result = run(str(self.messy), "--config", str(bad))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("不是合法 JSON", result.stderr)
+
+        missing = Path(self.tmp) / "nope.json"
+        result = run(str(self.messy), "--config", str(missing))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("配置文件不存在", result.stderr)
+
+    # ---- v2: 按日期归档 ----
+    def test_by_date(self):
+        (self.messy / "photo.jpg").touch()
+        os.utime(self.messy / "photo.jpg", (1715759400, 1715759400))  # 2024-05-15
+        result = run(str(self.messy), "--by-date", "--apply")
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue((self.messy / "2024" / "05" / "photo.jpg").exists())
+
+    def test_by_date_undo_cleans_nested_folders(self):
+        """按日期归档后 undo，应清理 2024/05 和空的 2024 两层。"""
+        (self.messy / "photo.jpg").touch()
+        os.utime(self.messy / "photo.jpg", (1715759400, 1715759400))
+        run(str(self.messy), "--by-date", "--apply")
+        result = run(str(self.messy), "--undo")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("已恢复 16/16", result.stdout)
+        self.assertFalse((self.messy / "2024").exists(), "2024 文件夹应被清理")
+
+    # ---- v2: 清理空文件夹 ----
+    def test_clean_empty_preview_does_nothing(self):
+        result = run(str(self.messy), "--clean-empty")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("将清理 1 个空文件夹", result.stdout)
+        self.assertTrue((self.messy / "empty_dir").exists(), "预览不应删除")
+
+    def test_clean_empty_apply_removes_with_cascade(self):
+        (self.messy / "junk_dir").mkdir()
+        (self.messy / "nested" / "deep").mkdir(parents=True)
+        result = run(str(self.messy), "--clean-empty", "--apply")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("已清理", result.stdout)
+        self.assertFalse((self.messy / "empty_dir").exists())
+        self.assertFalse((self.messy / "junk_dir").exists())
+        self.assertFalse((self.messy / "nested").exists(), "级联清理应移除空父目录")
+        # 非空文件夹不受影响
+        self.assertTrue((self.messy / "keep_me").exists())
 
 
 if __name__ == "__main__":

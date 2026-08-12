@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "file-organizer"
-version = "1.0.0"
-description = "安全的命令行文件整理工具：先预览、后执行、可撤销"
+version = "2.0.0"
+description = "安全的命令行文件整理工具：先预览、后执行、可撤销（支持自定义规则/按日期归档/清理空目录）"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "deng98732" }]
 keywords = ["file-organizer", "files", "organize", "cli"]
