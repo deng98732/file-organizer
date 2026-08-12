@@ -15,7 +15,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/<你的用户名>/file-organizer.git
+git clone https://github.com/deng98732/file-organizer.git
 cd file-organizer
 ```
 
