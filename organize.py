@@ -137,6 +137,49 @@ def execute_moves(target: Path, moves: list[tuple[Path, Path]]) -> int:
     return len(operation["moves"])
 
 
+def undo_last(target: Path) -> bool:
+    """
+    撤销最近一次整理：把文件移回原位置。
+    返回是否执行了撤销（没有历史时返回 False）。
+    """
+    history = load_history(target)
+    if not history:
+        print("没有可撤销的整理记录。")
+        return False
+
+    operation = history[-1]
+    moves = operation["moves"]
+    print(f"撤销 {operation['id']} 的整理（{len(moves)} 个文件）：")
+
+    restored = 0
+    # 逆序恢复，先处理后面的文件
+    for record in reversed(moves):
+        src = Path(record["src"])
+        dest = Path(record["dest"])
+        if not dest.exists():
+            print(f"  跳过（目标已不存在）：{dest.name}", file=sys.stderr)
+            continue
+        try:
+            shutil.move(str(dest), str(src))
+        except OSError as e:
+            print(f"  恢复失败：{dest.name} ({e})", file=sys.stderr)
+            continue
+        restored += 1
+        # 类别文件夹空了就删除（只可能是本次整理创建的）
+        try:
+            dest.parent.rmdir()
+        except OSError:
+            pass  # 目录非空或不存在，忽略
+
+    # 从历史中移除该操作（已完成的移动才移除）
+    if restored == len(moves):
+        history.pop()
+        save_history(target, history)
+
+    print(f"已恢复 {restored}/{len(moves)} 个文件。")
+    return True
+
+
 def parse_args() -> argparse.Namespace:
     """解析命令行参数。"""
     parser = argparse.ArgumentParser(
@@ -155,7 +198,14 @@ def main() -> int:
     args = parse_args()
 
     if args.undo:
-        print("撤销功能将在 4.4 步实现")
+        if not args.directory:
+            print("错误：--undo 需要指定目录参数：python organize.py <目录> --undo", file=sys.stderr)
+            return 1
+        target = Path(args.directory)
+        if not target.is_dir():
+            print(f"错误：目录不存在：{target}", file=sys.stderr)
+            return 1
+        undo_last(target)
         return 0
 
     target = Path(args.directory)
