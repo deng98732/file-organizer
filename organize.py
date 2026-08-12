@@ -166,10 +166,8 @@ def undo_last(target: Path) -> bool:
             continue
         restored += 1
         # 类别文件夹空了就删除（只可能是本次整理创建的）
-        try:
+        if not any(dest.parent.iterdir()):
             dest.parent.rmdir()
-        except OSError:
-            pass  # 目录非空或不存在，忽略
 
     # 从历史中移除该操作（已完成的移动才移除）
     if restored == len(moves):

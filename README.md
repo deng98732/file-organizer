@@ -76,7 +76,7 @@ python3 test_organize.py
 
 ## 项目结构
 
-```
+```text
 file-organizer/
 ├── organize.py        # 主程序
 ├── test_organize.py   # 自动化测试（8 个场景）

@@ -28,7 +28,7 @@
 
 ## 命令行接口
 
-```
+```text
 python organize.py <目录>            # 预览模式（默认）
 python organize.py <目录> --apply    # 执行整理
 python organize.py --undo            # 撤销最近一次整理
